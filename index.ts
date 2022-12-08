@@ -11,6 +11,8 @@ const app: Express = express();
 
 app.use(
   cors({
+    credentials: true,
+    exposedHeaders: ["SET-COOKIE"],
     origin: "http://localhost:3000",
   })
 );
