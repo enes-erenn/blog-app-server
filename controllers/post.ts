@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
-import jwt, { JsonWebTokenError } from "jsonwebtoken";
 import { MysqlError } from "mysql";
 import { db } from "../db";
-import { User } from "../types/types";
+import { verify } from "../utils/jwt";
 
 export const getPosts = (req: Request, res: Response): void => {
   const query = req.query.category
@@ -27,42 +26,44 @@ export const getPost = (req: Request, res: Response): void => {
   });
 };
 
-export const addPost = (req: Request, res: Response): void => {
+export const addPost = async (req: Request, res: Response): Promise<any> => {
   const token = req.cookies.access_token;
+  const secret = process.env.JWT_SEC;
 
-  if (!token) {
+  if (!token || !secret) {
     res.status(401).send("Not authenticated!");
     return;
   }
 
-  jwt.verify(
-    token,
-    "jwtkey",
-    (err: JsonWebTokenError | null, userInfo: any) => {
-      if (err) return res.status(403).json("Token is not valid!");
+  // Decrypting token
+  const verification = await verify(token, secret);
 
-      const query =
-        "INSERT INTO posts(`title`, `desc`, `img`, `category`, `date`, `uid`) VALUES (?)";
+  // Checking token exp if is it valid
+  if (verification.exp > new Date().getTime()) {
+    const query =
+      "INSERT INTO posts(`title`, `desc`, `img`, `category`, `date`, `uid`) VALUES (?)";
 
-      const values = [
-        req.body.title,
-        req.body.desc,
-        req.body.img,
-        req.body.category,
-        req.body.date,
-        userInfo.id,
-      ];
+    const values = [
+      req.body.title,
+      req.body.desc,
+      req.body.img,
+      req.body.category,
+      req.body.date,
+      verification.id,
+    ];
 
-      db.query(query, [values], (err: MysqlError | null, data) => {
-        if (err) return res.status(403).json(err);
+    db.query(query, [values], (err: MysqlError | null, data) => {
+      if (err) return res.status(403).json(err);
 
-        return res.status(200).json("Post has been created!");
-      });
-    }
-  );
+      return res.status(200).json("Post has been created!");
+    });
+  } else {
+    return res.status(403).json("Token is not valid!");
+  }
 };
 
 export const deletePost = (req: Request, res: Response): void => {
+  /* 
   const token = req.cookies.access_token;
 
   if (!token) {
@@ -88,9 +89,10 @@ export const deletePost = (req: Request, res: Response): void => {
       });
     }
   );
+  */
 };
-
 export const updatePost = (req: Request, res: Response): void => {
+  /*
   const token = req.cookies.access_token;
 
   if (!token) {
@@ -127,5 +129,5 @@ export const updatePost = (req: Request, res: Response): void => {
         }
       );
     }
-  );
+  );*/
 };
